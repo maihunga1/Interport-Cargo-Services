@@ -1,0 +1,58 @@
+@model Model.User
+@{
+    ViewData["Title"] = "Register";
+    Layout = "_Layout";
+}
+
+<div class="container mt-5" style="max-width: 500px;">
+    <h2 class="text-center mb-4">Register</h2>
+
+    <form asp-action="Register" method="post" class="border p-4 shadow rounded bg-light">
+        <div class="form-group mb-3">
+            <label for="username">Username</label>
+            <input type="text" name="Username" class="form-control" placeholder="Username" required />
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="firstName">First Name</label>
+            <input type="text" name="FirstName" class="form-control" placeholder="First Name" required />
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="familyName">Family Name</label>
+            <input type="text" name="FamilyName" class="form-control" placeholder="Family Name" required />
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="email">Email Address</label>
+            <input type="email" name="Email" class="form-control" placeholder="Email" required />
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="phone">Phone Number</label>
+            <input type="tel" name="PhoneNumber" class="form-control" placeholder="Phone Number" required />
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="company">Company Name (if applicable)</label>
+            <input type="text" name="CompanyName" class="form-control" placeholder="Company Name" />
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="address">Address</label>
+            <textarea name="Address" class="form-control" placeholder="Address" rows="2" required></textarea>
+        </div>
+
+        <div class="form-group mb-4">
+            <label for="password">Password</label>
+            <input type="password" name="Password" class="form-control" placeholder="Password" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Register</button>
+    </form>
+
+    <div class="text-center mt-3">
+        <span>Already have an account?</span>
+        <a href="/login" class="btn btn-link">Login here</a>
+    </div>
+</div>

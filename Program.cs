@@ -1,7 +1,31 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Sqlite;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+
+builder.Services.AddDbContext<DbContext.ApplicationDbContext>(options =>
+                options.UseSqlite("Data Source=intercargo.db")
+                       .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole())));
+
+builder.Services.AddAuthentication("UserAuth")
+    .AddCookie("UserAuth", options =>
+    {
+        options.LoginPath = "/Login";
+        options.LogoutPath = "/Logout";
+        options.AccessDeniedPath = "/AccessDenied";
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("User", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireClaim("UserRole", "User");
+    });
+});
 
 var app = builder.Build();
 
@@ -18,6 +42,11 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}"
+);
 
 app.MapStaticAssets();
 app.MapRazorPages()
