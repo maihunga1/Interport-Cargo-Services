@@ -1,66 +1,76 @@
-using Microsoft.EntityFrameworkCore;
+// Controllers/UserController.cs
 using Microsoft.AspNetCore.Mvc;
 using Model;
-using Microsoft.AspNetCore.Authorization;
+using Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 
-namespace UserController;
-public class UserController : Controller
+namespace UserControllers
 {
-    private readonly DbContext.ApplicationDbContext _context;
-
-    public UserController(DbContext.ApplicationDbContext context)
+    public class UserController : Controller
     {
-        _context = context;
-    }
+        private readonly DbContext.ApplicationDbContext _context;
+        private readonly IPasswordService _passwordService;
 
-    [Route("register")]
-    [HttpGet]
-    public async Task<IActionResult> Register()
-    {
-        return View();
-    }
-
-    [Route("register")]
-    [HttpPost]
-    public async Task<IActionResult> Register(User user)
-    {
-        if (ModelState.IsValid)
+        public UserController(DbContext.ApplicationDbContext context, IPasswordService passwordService)
         {
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-            return RedirectToAction("Login");
+            _context = context;
+            _passwordService = passwordService;
         }
-        return View(user);
-    }
 
-    [Route("login")]
-    [HttpGet]
-    public IActionResult Login()
-    {
-        return View();
-    }
-
-    [Route("login")]
-    [HttpPost]
-    public async Task<IActionResult> Login(string email, string password)
-    {
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == email && u.Password == password);
-
-        if (user != null)
+        [Route("register")]
+        [HttpGet]
+        public IActionResult Register()
         {
-            // Set authentication cookie here
+            return View();
+        }
+
+        [Route("register")]
+        [HttpPost]
+        public async Task<IActionResult> Register(User user)
+        {
+            if (ModelState.IsValid)
+            {
+                // Hash the password before storing
+                user.Password = _passwordService.HashPassword(user.Password);
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+                return RedirectToAction("Login");
+            }
+            return View(user);
+        }
+
+        [Route("login")]
+        [HttpGet]
+        public IActionResult Login()
+        {
+            return View();
+        }
+
+        [Route("login")]
+        [HttpPost]
+        public async Task<IActionResult> Login(string email, string password)
+        {
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == email);
+
+            if (user != null && _passwordService.VerifyPassword(user.Password, password))
+            {
+                // Set authentication cookie here
+                return RedirectToAction("Index", "Home");
+            }
+
+            ModelState.AddModelError("", "Invalid login attempt.");
+            return View();
+        }
+
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            await HttpContext.SignOutAsync("UserAuth");
             return RedirectToAction("Index", "Home");
         }
-        ModelState.AddModelError("", "Invalid login attempt.");
-        return View();
-    }
-
-    [Authorize]
-    public async Task<IActionResult> Logout()
-    {
-        await HttpContext.SignOutAsync("UserAuth");
-        return RedirectToAction("Index", "Home");
     }
 }

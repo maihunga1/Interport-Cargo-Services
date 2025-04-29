@@ -4,24 +4,24 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using DbContext;
 using Model;
+using UserControllers;
+using Services;
 
 public class UserControllerTests
 {
-    private readonly Mock<ApplicationDbContext> _mockContext;
-    private readonly UserController.UserController _controller;
-    private readonly Mock<DbSet<User>> _mockSet;
+    private readonly ApplicationDbContext _context;
+    private readonly Mock<IPasswordService> _mockPasswordService;
 
     public UserControllerTests()
     {
-        _mockSet = new Mock<DbSet<User>>();
+        _mockPasswordService = new Mock<IPasswordService>();
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: "TestDb")
             .Options;
 
-        var context = new ApplicationDbContext(options);
-        _mockContext = new Mock<ApplicationDbContext>(options);
-        _controller = new UserController.UserController(context);
+        _context = new ApplicationDbContext(options);
+
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public class UserControllerTests
         // Arrange
         var user = new User
         {
-            UserName = "t",
+            UserName = "testuser",
             Email = "test@example.com",
             Password = "password",
             FirstName = "Test",
@@ -40,10 +40,17 @@ public class UserControllerTests
             CompanyName = "Test Company",
         };
 
+        _mockPasswordService.Setup(p => p.HashPassword(It.IsAny<string>())).Returns("hashedPassword");
+
+        UserController _controller = new(_context, _mockPasswordService.Object);
+
         // Act
         var result = await _controller.Register(user);
 
-        // Assert
+        var savedUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == "test@example.com");
+        Assert.NotNull(savedUser);
+        Assert.Equal("hashedPassword", savedUser.Password);
+
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Login", redirectResult.ActionName);
     }
@@ -52,11 +59,12 @@ public class UserControllerTests
     public async Task Register_With_Invalid_Model_Should_Return_View()
     {
         // Arrange
+        UserController _controller = new UserController(_context, _mockPasswordService.Object);
         _controller.ModelState.AddModelError("Email", "Required");
 
         var user = new User
         {
-            UserName = "i",
+            UserName = "testuser",
             FirstName = "Jane",
             FamilyName = "Doe",
             PhoneNumber = "9876543210",
@@ -93,7 +101,7 @@ public class UserControllerTests
         {
             UserName = "testuser",
             Email = "test@example.com",
-            Password = "password",
+            Password = "hashedPassword",
             FirstName = "Test",
             FamilyName = "User",
             PhoneNumber = "1234567890",
@@ -101,18 +109,14 @@ public class UserControllerTests
             CompanyName = "Test Company",
         };
 
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: "LoginDb")
-            .Options;
+        _mockPasswordService
+        .Setup(p => p.VerifyPassword(user.Password, "password123"))
+        .Returns(true);
 
-        using var context = new ApplicationDbContext(options);
-        context.Users.Add(user);
-        context.SaveChanges();
-
-        var controller = new UserController.UserController(context);
+        var controller = new UserController(_context, _mockPasswordService.Object);
 
         // Act
-        var result = await controller.Login(user.Email, user.Password);
+        var result = await controller.Login("test@example.com", "password123");
 
         // Assert
         var redirectResult = Assert.IsType<RedirectToActionResult>(result);
@@ -124,16 +128,27 @@ public class UserControllerTests
     public async Task Login_Post_InvalidCredentials_ReturnsViewWithError()
     {
         // Arrange
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: "InvalidLoginDb")
-            .Options;
 
-        using var context = new ApplicationDbContext(options);
+        var user = new User
+        {
+            UserName = "testuser",
+            Email = "test@example.com",
+            Password = "hashedPassword",
+            FirstName = "Test",
+            FamilyName = "User",
+            PhoneNumber = "1234567890",
+            Address = "123 Test St",
+            CompanyName = "Test Company",
+        };
 
-        var controller = new UserController.UserController(context);
+        _mockPasswordService
+        .Setup(p => p.VerifyPassword(user.Password, "wrongPassword"))
+        .Returns(false);
+
+        var controller = new UserController(_context, _mockPasswordService.Object);
 
         // Act
-        var result = await controller.Login("wrong@example.com", "wrongpassword");
+        var result = await controller.Login("test@example.com", "wrongPassword");
 
         // Assert
         var viewResult = Assert.IsType<ViewResult>(result);

@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Model;
+using Services;
 using Microsoft.EntityFrameworkCore.Sqlite;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +12,9 @@ builder.Services.AddRazorPages();
 builder.Services.AddDbContext<DbContext.ApplicationDbContext>(options =>
                 options.UseSqlite("Data Source=intercargo.db")
                        .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole())));
+
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddScoped<IPasswordService, PasswordService>();
 
 builder.Services.AddAuthentication("UserAuth")
     .AddCookie("UserAuth", options =>
